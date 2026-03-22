@@ -40,9 +40,9 @@ app.post('/webhook', async (req, res) => {
         }
 
         // Regras baseadas no valor
-        // 35.90 -> Alcaia Digital
+        // 35.90 ou 39.90 -> Alcaia Digital (baseado nas amostras de JSON)
         // 65.90 -> Alcaia Física
-        if (valorRequisicao === 35.9 || valorRequisicao === 35.90) {
+        if (valorRequisicao === 35.9 || valorRequisicao === 35.90 || valorRequisicao === 39.9 || valorRequisicao === 39.90) {
             urlDestino = 'https://affiliatedalcaianet-fx.azurewebsites.net/vendasaapi/registrar/vekssell/FESN/E3C243A2-F453-43E9-83BA-79BECF477BAD';
             console.log(`Token Veksell válido. Valor ${valorRequisicao} detectado -> Rota: Alcaia Digital`);
         } else if (valorRequisicao === 65.9 || valorRequisicao === 65.90) {
