@@ -22,26 +22,41 @@ app.post('/webhook', async (req, res) => {
         }
     }
 
-    console.log("Recebido payload da transação com o cliente:", payload && payload.client ? payload.client.name : "Desconhecido");
+    console.log(`Recebido payload. Cliente: ${payload && payload.client ? payload.client.name : "Desconhecido"}`);
 
-    // Identifica o token da requisição para escolher o destino do webhook
     let tokenRequisicao = payload ? payload.token : null;
     let urlDestino = null;
 
-    // Regras de disparo baseadas no TOKEN
-    // Token ish0me01 -> Alcaia Digital
-    // Token ac80cyb6 -> Alcaia Física
-    if (tokenRequisicao === 'ish0me01') {
-        urlDestino = 'https://affiliatedalcaianet-fx.azurewebsites.net/vendasaapi/registrar/vekssell/FESN/E3C243A2-F453-43E9-83BA-79BECF477BAD';
-        console.log(`Token '${tokenRequisicao}' detectado -> Rota: Alcaia Digital`);
-    } else if (tokenRequisicao === 'ac80cyb6') {
-        urlDestino = 'https://affiliatedalcaianet-fx.azurewebsites.net/vendasaapi/registrar/vekssell/FESN/46E33AC6-6167-4265-AC99-00452DBF73B3';
-        console.log(`Token '${tokenRequisicao}' detectado -> Rota: Alcaia Física`);
+    // A plataforma Veksell agora envia um token único (sashzu2i) para ambos.
+    if (tokenRequisicao === 'sashzu2i') {
+        
+        // Como o token é o mesmo, a decisão de qual URL chamar será baseada no valor (preço)
+        let valorRequisicao = 0;
+        
+        if (payload.transaction && typeof payload.transaction.amount === 'number') {
+            valorRequisicao = payload.transaction.amount;
+        } else if (payload.orderItems && payload.orderItems.length > 0) {
+            valorRequisicao = payload.orderItems[0].price;
+        }
+
+        // Regras baseadas no valor
+        // 35.90 -> Alcaia Digital
+        // 65.90 -> Alcaia Física
+        if (valorRequisicao === 35.9 || valorRequisicao === 35.90) {
+            urlDestino = 'https://affiliatedalcaianet-fx.azurewebsites.net/vendasaapi/registrar/vekssell/FESN/E3C243A2-F453-43E9-83BA-79BECF477BAD';
+            console.log(`Token Veksell válido. Valor ${valorRequisicao} detectado -> Rota: Alcaia Digital`);
+        } else if (valorRequisicao === 65.9 || valorRequisicao === 65.90) {
+            urlDestino = 'https://affiliatedalcaianet-fx.azurewebsites.net/vendasaapi/registrar/vekssell/FESN/46E33AC6-6167-4265-AC99-00452DBF73B3';
+            console.log(`Token Veksell válido. Valor ${valorRequisicao} detectado -> Rota: Alcaia Física`);
+        } else {
+            console.log(`Token Veksell válido, mas o valor (${valorRequisicao}) não mapeia para nenhuma URL da Alcaia.`);
+        }
+        
     } else {
-        console.log(`Token '${tokenRequisicao}' não mapeado. Nenhuma URL da Alcaia acionada.`);
+        console.log(`Token '${tokenRequisicao}' inválido para a Vekssell. Nenhuma URL da Alcaia acionada.`);
     }
 
-    // Se a URL foi mapeada, executa o disparo
+    // Se a URL foi mapeada com sucesso (token correto + valor correto), dispara
     if (urlDestino) {
         try {
             // Utilizando o "fetch" nativo do Node.js (Node 18+)
@@ -58,7 +73,7 @@ app.post('/webhook', async (req, res) => {
 
     // Responde localmente dizendo que tratou o webhook com sucesso
     return res.status(200).json({
-        message: urlDestino ? "Dados encaminhados com sucesso!" : "Dados avaliados, mas sem disparo (token não reconhecido).",
+        message: urlDestino ? "Dados validados e encaminhados com sucesso!" : "Dados avaliados, mas sem disparo (token inválido ou valor não mapeado).",
         data: payload
     });
 });
